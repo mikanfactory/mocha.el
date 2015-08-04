@@ -51,6 +51,9 @@
   :type 'string
   :group 'mocha)
 
+(defvar mocha-previous-command nil)
+(defvar mocha-describe-regexp "describe[\s\t()]+'\\([a-z|A-Z|1-9|#_?!()]*\\)'[,\s\t]+")
+
 (defun mocha-project-root-path (file)
   (or (f--traverse-upwards (f-exists? (f-expand mocha-project-root-specifier it))
                            (f-dirname file))
@@ -72,13 +75,37 @@
           (append (mocha-make-minimum-command exec-path) opt (list file))))
 
 ;;;###autoload
-(defun mocha-run-this-file ())
+(defun mocha-run-this-file ()
+  (interactive)
+  (lexical-let* ((file (f-this-file))
+                 (exec-path (mocha-executable-path file))
+                 (root-path (mocha-project-root-path file)))
+    (lexical-let ((command (mocha-run-this-file-command file exec-path)))
+      (setq mocha-previous-command command)
+      (compile command))))
 
 ;;;###autoload
-(defun mocha-run-previous-process ())
+(defun mocha-run-previous-process ()
+  (interactive)
+  (if mocha-present-command
+      (compile mocha-previous-command)
+    (user-error "Could not find previous process. Please run other command.")))
 
 ;;;###autoload
-(defun mocha-run-at-point ())
+(defun mocha-run-at-point ()
+  (interactive)
+  (lexical-let* ((file (f-this-file))
+                 (exec-path (mocha-executable-path file))
+                 (root-path (mocha-project-root-path file)))
+    (save-excursion
+      (end-of-line)
+      (or (re-search-backward mocha-describe-regexp nil t)
+          (user-error "Could not find spec before this point."))
+      (lexical-let* ((target (match-string 1))
+                     (command (mocha-run-this-file-command
+                               file exec-path (mocha-grep-option target))))
+        (setq mocha-previous-command command )
+        (compile command)))))
 
 ;;;###autoload
 (defun mocha-run-all-test ())
