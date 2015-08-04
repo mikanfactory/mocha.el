@@ -59,16 +59,17 @@
                            (f-dirname file))
       (user-error "Could not find project root. Please make and retry.")))
 
-(defun mocha-executable-path (file root-path)
+(defun mocha-executable-path (file project-root)
   (or (executable-find "mocha")
-      (executable-find (f-join root-path "node_modules" ".bin" "mocha"))
+      (executable-find (f-join project-root "node_modules" ".bin" "mocha"))
       (user-error "Could not find `mocha.js'. Please install and retry.")))
 
 (defun* mocha-make-minimum-command (exec-path &optional (opt nil opt-supplied-p))
   (append (list exec-path (format "--reporter %s" mocha-reporter))
           opt))
 
-(defun mocha-grep-option (target) (list "-g" target))
+(defun mocha-grep-option (target)
+  (list "-g" (format "'%s'" target)))
 
 (defun* mocha-run-this-file-command (file exec-path &optional (opt nil opt-supplied-p))
   (s-join " "
@@ -78,8 +79,8 @@
 (defun mocha-run-this-file ()
   (interactive)
   (lexical-let* ((file (f-this-file))
-                 (exec-path (mocha-executable-path file))
-                 (root-path (mocha-project-root-path file)))
+                 (project-root (mocha-project-root-path file))
+                 (exec-path (mocha-executable-path file project-root)))
     (lexical-let ((command (mocha-run-this-file-command file exec-path)))
       (setq mocha-previous-command command)
       (compile command))))
@@ -87,7 +88,7 @@
 ;;;###autoload
 (defun mocha-run-previous-process ()
   (interactive)
-  (if mocha-present-command
+  (if mocha-previous-command
       (compile mocha-previous-command)
     (user-error "Could not find previous process. Please run other command.")))
 
@@ -95,8 +96,8 @@
 (defun mocha-run-at-point ()
   (interactive)
   (lexical-let* ((file (f-this-file))
-                 (exec-path (mocha-executable-path file))
-                 (root-path (mocha-project-root-path file)))
+                 (project-root (mocha-project-root-path file))
+                 (exec-path (mocha-executable-path file project-root)))
     (save-excursion
       (end-of-line)
       (or (re-search-backward mocha-describe-regexp nil t)
@@ -104,7 +105,7 @@
       (lexical-let* ((target (match-string 1))
                      (command (mocha-run-this-file-command
                                file exec-path (mocha-grep-option target))))
-        (setq mocha-previous-command command )
+        (setq mocha-previous-command command)
         (compile command)))))
 
 ;;;###autoload
@@ -114,7 +115,7 @@
 (defun mocha-jump-toggle-file (file))
 
 (defun mocha-test-file? (file)
-  (let ((filename (f-filename file)))
+  (lexical-let ((filename (f-filename file)))
     (or (s-contains? "test" filename)
         (s-contains? "spec" filename))))
 

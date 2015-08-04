@@ -39,14 +39,14 @@
                  (exec-path "mocha"))
     (expect "mocha --reporter spec foo-test.js"
       (mocha-run-this-file-command file exec-path))
-    (expect "mocha --reporter spec -g fizzbuzz foo-test.js"
+    (expect "mocha --reporter spec -g 'fizzbuzz' foo-test.js"
       (mocha-run-this-file-command file
                                    exec-path
                                    (mocha-grep-option "fizzbuzz")))))
 
 (expectations
   (desc "mocha-test-file?")
-  (desc "it returns true if filename contains spec or test.")
+  (desc "it returns true if filename contains spec or test")
   (expect t (mocha-test-file? "~/project-root/test/foo-spec.js"))
   (expect t (mocha-test-file? "~/project-root/test/test-foo.js"))
   (expect nil (mocha-test-file? "~/project-root/src/foo.js"))
