@@ -33,16 +33,14 @@
       (mocha-make-minimum-command exec-path '("-g" "FizzBuzz")))))
 
 (expectations
-  (desc "mocha-run-this-file-command")
+  (desc "mocha-make-command")
   (desc "it returns appropriate command which include only 1 target filename")
   (lexical-let* ((file "foo-test.js")
                  (exec-path "mocha"))
     (expect "mocha --reporter spec foo-test.js"
-      (mocha-run-this-file-command file exec-path))
+      (mocha-make-command file exec-path))
     (expect "mocha --reporter spec -g 'fizzbuzz' foo-test.js"
-      (mocha-run-this-file-command file
-                                   exec-path
-                                   (mocha-grep-option "fizzbuzz")))))
+      (mocha-make-command file exec-path (mocha-grep-option "fizzbuzz")))))
 
 (expectations
   (desc "mocha-test-file?")

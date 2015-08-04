@@ -71,7 +71,7 @@
 (defun mocha-grep-option (target)
   (list "-g" (format "'%s'" target)))
 
-(defun* mocha-run-this-file-command (file exec-path &optional (opt nil opt-supplied-p))
+(defun* mocha-make-command (file exec-path &optional (opt nil opt-supplied-p))
   (s-join " "
           (append (mocha-make-minimum-command exec-path) opt (list file))))
 
@@ -81,7 +81,7 @@
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
                  (exec-path (mocha-executable-path file project-root)))
-    (lexical-let ((command (mocha-run-this-file-command file exec-path)))
+    (lexical-let ((command (mocha-make-command file exec-path)))
       (setq mocha-previous-command command)
       (compile command))))
 
@@ -103,13 +103,19 @@
       (or (re-search-backward mocha-describe-regexp nil t)
           (user-error "Could not find spec before this point."))
       (lexical-let* ((target (match-string 1))
-                     (command (mocha-run-this-file-command
+                     (command (mocha-make-command
                                file exec-path (mocha-grep-option target))))
         (setq mocha-previous-command command)
         (compile command)))))
 
 ;;;###autoload
-(defun mocha-run-all-test ())
+(defun mocha-run-all-test ()
+  (interactive)
+  (lexical-let* ((file (f-this-file))
+                 (project-root (mocha-project-root-path file))
+                 (exec-path (mocha-executable-path file project-root)))
+    (let ((default-directory (concat project-root "/")))
+      (compile (mocha-make-command "" exec-path)))))
 
 ;; for jump to src/test file toggle.
 (defun mocha-jump-toggle-file (file))
