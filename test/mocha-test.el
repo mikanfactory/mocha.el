@@ -5,7 +5,7 @@
 
 (expectations
   (desc "mocha-project-root-path")
-  (desc "it retruns project root path.")
+  (desc "it retruns project root path")
   (lexical-let ((file "~/Programming/tmp/mocha-test/test/mocha-test.js"))
     (expect (f-expand "~/Programming/tmp/mocha-test")
       (mocha-project-root-path file)))
@@ -17,7 +17,7 @@
 
 (expectations
   (desc "mocha-executable-path")
-  (desc "it returns path where mocha.js placed.")
+  (desc "it returns path where mocha.js placed")
   (lexical-let* ((file "~/Programming/tmp/mocha-test/test/mocha-test.js")
                  (project-root (mocha-project-root-path file)))
     (expect (f-join "~/" ".nodebrew" "current" "bin" "mocha")
@@ -25,7 +25,7 @@
 
 (expectations
   (desc "mocha-make-minimum-command")
-  (desc "it returns minimum command")
+  (desc "it returns minimum command which does't include target filename")
   (lexical-let* ((exec-path "mocha"))
     (expect '("mocha" "--reporter spec")
       (mocha-make-minimum-command exec-path))
@@ -34,7 +34,7 @@
 
 (expectations
   (desc "mocha-run-this-file-command")
-  (desc "it returns appropriate command")
+  (desc "it returns appropriate command which include only 1 target filename")
   (lexical-let* ((file "foo-test.js")
                  (exec-path "mocha"))
     (expect "mocha --reporter spec foo-test.js"
