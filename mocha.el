@@ -1,4 +1,4 @@
-;;; mocha.el --- Run mocha quickly -*- lexical-binding: t; -*-y
+;;; mocha.el --- Run mocha quickly -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015 Shoji Sugai
 
@@ -40,5 +40,55 @@
   "Run mocha quickly"
   :prefix "mocha"
   :group 'languages)
+
+(defcustom mocha-reporter "spec"
+  "Used in reporter option"
+  :type 'string
+  :group 'mocha)
+
+(defcustom mocha-project-root-specifier "node_modules"
+  "Search this directory as a project root"
+  :type 'string
+  :group 'mocha)
+
+(defun mocha-project-root-path (file)
+  (or (f--traverse-upwards (f-exists? (f-expand mocha-project-root-specifier it))
+                           (f-dirname file))
+      (user-error "Could not find project root. Please make and retry.")))
+
+(defun mocha-executable-path (file root-path)
+  (or (executable-find "mocha")
+      (executable-find (f-join root-path "node_modules" ".bin" "mocha"))
+      (user-error "Could not find `mocha.js'. Please install and retry.")))
+
+(defun* mocha-make-minimum-command (exec-path &optional (opt nil opt-supplied-p))
+  (append (list exec-path (format "--reporter %s" mocha-reporter))
+          opt))
+
+(defun mocha-grep-option (target) (list "-g" target))
+
+(defun* mocha-run-this-file-command (file exec-path &optional (opt nil opt-supplied-p))
+  (s-join " "
+          (append (mocha-make-minimum-command exec-path) opt (list file))))
+
+;;;###autoload
+(defun mocha-run-this-file ())
+
+;;;###autoload
+(defun mocha-run-previous-process ())
+
+;;;###autoload
+(defun mocha-run-at-point ())
+
+;;;###autoload
+(defun mocha-run-all-test ())
+
+;; for jump to src/test file toggle.
+(defun mocha-jump-toggle-file (file))
+
+(defun mocha-test-file? (file)
+  (let ((filename (f-filename file)))
+    (or (s-contains? "test" filename)
+        (s-contains? "spec" filename))))
 
 (provide 'mocha)
