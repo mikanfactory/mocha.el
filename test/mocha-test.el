@@ -39,6 +39,8 @@
                  (exec-path "mocha"))
     (expect "mocha --reporter spec foo-test.js"
       (mocha-make-command file exec-path))
+    (expect "mocha --reporter spec "
+      (mocha-make-command "" exec-path))
     (expect "mocha --reporter spec -g 'fizzbuzz' foo-test.js"
       (mocha-make-command file exec-path (mocha-grep-option "fizzbuzz")))))
 

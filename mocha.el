@@ -52,6 +52,7 @@
   :group 'mocha)
 
 (defvar mocha-previous-command nil)
+(defvar mocha-previous-directory nil)
 (defvar mocha-describe-regexp "describe[\s\t()]+'\\([a-z|A-Z|1-9|#_?!()]*\\)'[,\s\t]+")
 
 (defun mocha-project-root-path (file)
@@ -75,22 +76,21 @@
   (s-join " "
           (append (mocha-make-minimum-command exec-path) opt (list file))))
 
+(defun mocha-cd-and-run-command (destination command)
+  (message (concat destination "/"))
+  (let ((default-directory (concat destination "/")))
+    (compile command)))
+
 ;;;###autoload
 (defun mocha-run-this-file ()
   (interactive)
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
-                 (exec-path (mocha-executable-path file project-root)))
-    (lexical-let ((command (mocha-make-command file exec-path)))
-      (setq mocha-previous-command command)
-      (compile command))))
-
-;;;###autoload
-(defun mocha-run-previous-process ()
-  (interactive)
-  (if mocha-previous-command
-      (compile mocha-previous-command)
-    (user-error "Could not find previous process. Please run other command.")))
+                 (exec-path (mocha-executable-path file project-root))
+                 (command (mocha-make-command file exec-path)))
+    (setq mocha-previous-command command)
+    (setq mocha-previous-directory (f-dirname file))
+    (compile command)))
 
 ;;;###autoload
 (defun mocha-run-at-point ()
@@ -106,6 +106,7 @@
                      (command (mocha-make-command
                                file exec-path (mocha-grep-option target))))
         (setq mocha-previous-command command)
+        (setq mocha-previous-directory (f-dirname file))
         (compile command)))))
 
 ;;;###autoload
@@ -113,16 +114,32 @@
   (interactive)
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
-                 (exec-path (mocha-executable-path file project-root)))
-    (let ((default-directory (concat project-root "/")))
-      (compile (mocha-make-command "" exec-path)))))
+                 (exec-path (mocha-executable-path file project-root))
+                 (command (mocha-make-command "" exec-path)))
+    (setq mocha-previous-command command)
+    (setq mocha-previous-directory project-root)
+    (mocha-cd-and-run-command project-root command)))
 
-;; for jump to src/test file toggle.
-(defun mocha-jump-toggle-file (file))
+;;;###autoload
+(defun mocha-run-previous-process ()
+  (interactive)
+  (lexical-let ((previous-dir (mocha-previous-directory))
+                (previous-command mocha-previous-command))
+    (if (and previous-dir previous-command)
+        (mocha-cd-and-run-command previous-dir previous-command)
+      (user-error "Could not find previous process. Please run other command."))))
 
 (defun mocha-test-file? (file)
   (lexical-let ((filename (f-filename file)))
     (or (s-contains? "test" filename)
         (s-contains? "spec" filename))))
+
+(defun mocha-find-test-file-of (file))
+(defun mocha-spec-test-file-of (file))
+
+(defun mocha-jump-toggle-file (file)
+  (if (mocha-test-file? file)
+      (mocha-find-spec-file-of file)
+    (mocha-find-test-file-of file)))
 
 (provide 'mocha)
