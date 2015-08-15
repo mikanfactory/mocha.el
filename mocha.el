@@ -123,23 +123,10 @@
 ;;;###autoload
 (defun mocha-run-previous-process ()
   (interactive)
-  (lexical-let ((previous-dir (mocha-previous-directory))
+  (lexical-let ((previous-dir mocha-previous-directory)
                 (previous-command mocha-previous-command))
     (if (and previous-dir previous-command)
         (mocha-cd-and-run-command previous-dir previous-command)
       (user-error "Could not find previous process. Please run other command."))))
-
-(defun mocha-test-file? (file)
-  (lexical-let ((filename (f-filename file)))
-    (or (s-contains? "test" filename)
-        (s-contains? "spec" filename))))
-
-(defun mocha-find-test-file-of (file))
-(defun mocha-spec-test-file-of (file))
-
-(defun mocha-jump-toggle-file (file)
-  (if (mocha-test-file? file)
-      (mocha-find-spec-file-of file)
-    (mocha-find-test-file-of file)))
 
 (provide 'mocha)
