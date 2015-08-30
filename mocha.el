@@ -30,12 +30,6 @@
 
 ;;; Commentary:
 
-;;; TODO:
-;; + display compiled buffer clearly
-;; + add comment
-;; + add test
-;; + make function which search json file and toggle jump src/test file
-
 ;;; Code:
 (require 'f)
 (require 's)
@@ -57,125 +51,49 @@
   :type 'string
   :group 'mocha)
 
-(defvar mocha-previous-command nil)
-(defvar mocha-previous-directory nil)
-(defvar mocha-describe-regexp "describe[\s\t()]+'\\([a-z|A-Z|1-9|#_?!()]*\\)'[,\s\t]+")
-(defvar mocha-suffix-candidates '("-test" "_test" "-spec" "_spec"))
-(defvar mocha-project-structure nil)
-(defvar mocha-project-structure-save-path "~/.emacs.d")
+(defvar mocha-previous-command nil
+  "Previously hit command")
+
+(defvar mocha-previous-directory nil
+  "Previous directory which hit command in last time")
+
+(defvar mocha-describe-regexp "describe[\s\t()]+'\\([a-z|A-Z|1-9|#_?!()]*\\)'[,\s\t]+"
+  "match describe function")
 
 (defun mocha-project-root-path (file)
+  "Return project root path specified by `mocha-project-root-specifier'"
   (or (f--traverse-upwards (f-exists? (f-expand mocha-project-root-specifier it))
                            (f-dirname file))
       (user-error "Could not find project root. Please make it and retry.")))
 
 (defun mocha-executable-path (file project-root)
+  "Return path where mocha file left"
   (or (executable-find "mocha")
       (executable-find (f-join project-root "node_modules" ".bin" "mocha"))
       (user-error "Could not find `mocha.js'. Please install and retry.")))
 
-;; TODO: add option `--recursive' if needed
 (defun* mocha-make-minimum-command (exec-path &optional (opt nil opt-supplied-p))
+  "Return command like `mocha --reporter spec'"
   (append (list exec-path (format "--reporter %s" mocha-reporter))
           opt))
 
 (defun mocha-grep-option (target)
+  "Return mocha's grep option like `-g Array#filter'"
   (list "-g" (format "'%s'" target)))
 
 (defun* mocha-make-command (file exec-path &optional (opt nil opt-supplied-p))
+  "Return complete command like `mocha --reporter spec -g Array#filter'"
   (s-join " "
           (append (mocha-make-minimum-command exec-path) opt (list file))))
 
 (defun mocha-cd-and-run-command (destination command)
+  "Change directory to project root and run mocha"
   (let ((default-directory (f-slash destination)))
     (compile command)))
 
-(defun mocha-test-file? (file)
-  (lexical-let ((path (f-dirname file)))
-    (or (s-contains? "test" path)
-        (s-contains? "spec" path))))
-
-(defun mocha-add-suffix (src-file)
-  (cons src-file
-        (loop for suffix in mocha-suffix-candidates
-              collect (format "%s%s.js" (f-no-ext src-file) suffix))))
-
-(defun mocha-minimize-path (src-file)
-  (if (= 1 (length (f-split src-file)))
-      (user-error "the depth of path is too shallow.")
-    (f-relative src-file (f-parent (f-dirname src-file)))))
-
-(defun mocha-remove-suffix (test-file)
-  (replace-regexp-in-string "\\(-test\\|_test\\|-spec\\|_spec\\).js"
-                            ".js" test-file))
-
-(defun mocha--collect-entries (path recursive)
-  (let (result
-        (entries
-         (-reject
-          (lambda (file) (or (equal (f-filename file) ".")
-                             (equal (f-filename file) "..")
-                             (equal (f-filename file) "node_modules")
-                             (equal (f-filename file) "bin")
-                             (equal (f-filename file) "db")
-                             (equal (f-filename file) "log")
-                             (equal (f-filename file) "vendor")))
-          (directory-files path t))))
-    (cond (recursive
-           (-map
-            (lambda (entry) (if (f-file? entry)
-                                (setq result (cons entry result))
-                              (when (f-directory? entry)
-                                (setq result (cons entry result))
-                                (setq result (append result
-                                                     (f--collect-entries entry recursive))))))
-            entries))
-          (t (setq result entries)))
-    result))
-
-(defun mocha-toggle-jump (file)
-  (if (mocha-test-file? file)
-      (mocha-find-spec-file-of file)
-    (mocha-find-test-file-of file)))
-
-(defun mocha-find-test-file-under-test-dir (project-root candidates)
-  (cl-loop for candidate in candidates
-           for target = (f-join project-root "test" candidate)
-           if (f-exists? target) return target))
-
-(defun mocha-find-pair-test-file (src-file project-root)
-  (lexical-let* ((mini-path (mocha-minimize-path src-file))
-                 (mini-path-candidates (mocha-add-suffix mini-path))
-                 (flatten-canndidates (mocha-add-suffix (f-filename src-file))))
-    (or (mocha-find-test-file-under-test-dir project-root
-                                             mini-path-candidates)
-        (mocha-find-test-file-under-test-dir project-root
-                                             flatten-canndidates))))
-
-(defun mocha-find-pair-src-file (test-file project-root)
-  (lexical-let* ((mini-path (mocha-minimize-path test-file))
-                 (mini-path-target (mocha-remove-suffix mini-path))
-                 (filename (f-filename test-file))
-                 (entries (mocha--collect-entries project-root t)))
-    (-find (lambda (entry) (or (s-contains? filename entry)
-                               (s-contains? mini-path-target entry)))
-                   entries)))
-
-(defun mocha-append-hash-table (project-root)
-  (lexical-let ((json-object-type 'hash-table)
-                (all-project-structure (make-hash-table)))
-    (-if-let (all-project-structure
-              (gethash project-root (json-read-file mocha-project-structure-save-path)))
-        (setf (gethash project-root mocha-project-structure) all-project-structure))))
-
-(defun mocha-save-src-test-pairs (project-root)
-  (lexical-let ((json-object-type 'hash-table)
-                (all-project-structure (make-hash-table)))
-    (setf (gethash project-root all-project-structure) mocha-project-structure)
-    ))
-
 ;;;###autoload
 (defun mocha-run-this-file ()
+  "Run only this file"
   (interactive)
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
@@ -187,6 +105,7 @@
 
 ;;;###autoload
 (defun mocha-run-at-point ()
+  "Run only nearest pointer"
   (interactive)
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
@@ -204,6 +123,7 @@
 
 ;;;###autoload
 (defun mocha-run-all-test ()
+  "Run all spec file belongs to project root"
   (interactive)
   (lexical-let* ((file (f-this-file))
                  (project-root (mocha-project-root-path file))
@@ -215,6 +135,7 @@
 
 ;;;###autoload
 (defun mocha-run-previous-process ()
+  "Rerun command"
   (interactive)
   (lexical-let ((previous-dir mocha-previous-directory)
                 (previous-command mocha-previous-command))
